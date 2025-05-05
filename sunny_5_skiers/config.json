@@ -1,0 +1,8 @@
+{
+    "laps": 2,
+    "lapLen": 3500,
+    "penaltyLen": 150,
+    "firingLines": 2,
+    "start": "10:00:00.000",
+    "startDelta": "00:01:30"
+}
