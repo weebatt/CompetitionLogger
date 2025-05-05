@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -24,8 +25,8 @@ func LoadEvents(pathToEvents string) (*os.File, error) {
 	return eventsFile, nil
 }
 
-func ParseEvents(eventsFile *os.File) (map[int][]Event, error) {
-	eventsByCompetitor := make(map[int][]Event)
+func ParseEvents(eventsFile *os.File) (map[string]Event, error) {
+	eventsMap := make(map[string]Event)
 	scanner := bufio.NewScanner(eventsFile)
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -38,8 +39,8 @@ func ParseEvents(eventsFile *os.File) (map[int][]Event, error) {
 			return nil, fmt.Errorf("error parsing event line: %v", err)
 		}
 
-		competitorID := event.CompetitorID
-		eventsByCompetitor[competitorID] = append(eventsByCompetitor[competitorID], event)
+		Time := event.Time
+		eventsMap[Time] = event
 	}
 
 	if err := scanner.Err(); err != nil {
@@ -47,7 +48,7 @@ func ParseEvents(eventsFile *os.File) (map[int][]Event, error) {
 	}
 
 	defer eventsFile.Close()
-	return eventsByCompetitor, nil
+	return eventsMap, nil
 }
 
 func ParseEvent(line string) (Event, error) {
@@ -96,4 +97,14 @@ func ParseEvent(line string) (Event, error) {
 		CompetitorID: competitorID,
 		ExtraParams:  extraParams,
 	}, nil
+}
+
+func SortMapByKey(eventsMap map[string]Event) []string {
+	keys := make([]string, 0, len(eventsMap))
+	for key := range eventsMap {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+
+	return keys
 }
