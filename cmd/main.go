@@ -2,6 +2,7 @@ package main
 
 import (
 	"CompetitionLogger/internal/config"
+	"CompetitionLogger/internal/report"
 	"CompetitionLogger/pkg/events"
 	"fmt"
 	"log"
@@ -32,10 +33,11 @@ func main() {
 		log.Fatalf("Error parsing events: %v", err)
 	}
 
-	for _, event := range eventsMap {
-		fmt.Println(event)
-	}
-
 	// Generating race's logs
+	keys := events.SortMapByKey(eventsMap)
+	for _, key := range keys {
+		generatedLog := report.GenerateLog(eventsMap[key])
+		fmt.Printf("%v\n", generatedLog)
+	}
 
 }
