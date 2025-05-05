@@ -17,6 +17,10 @@ type Event struct {
 	ExtraParams  string
 }
 
+type EventStore struct {
+	events []Event
+}
+
 func LoadEvents(pathToEvents string) (*os.File, error) {
 	eventsFile, err := os.Open(pathToEvents)
 	if err != nil {
@@ -25,8 +29,8 @@ func LoadEvents(pathToEvents string) (*os.File, error) {
 	return eventsFile, nil
 }
 
-func ParseEvents(eventsFile *os.File) (map[string]Event, error) {
-	eventsMap := make(map[string]Event)
+func ParseEvents(eventsFile *os.File) (*EventStore, error) {
+	store := &EventStore{}
 	scanner := bufio.NewScanner(eventsFile)
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -34,24 +38,21 @@ func ParseEvents(eventsFile *os.File) (map[string]Event, error) {
 			continue
 		}
 
-		event, err := ParseEvent(line)
+		event, err := parseEvent(line)
 		if err != nil {
-			return nil, fmt.Errorf("error parsing event line: %v", err)
+			return nil, fmt.Errorf("error parsing line %q: %v", line, err)
 		}
-
-		Time := event.Time
-		eventsMap[Time] = event
+		store.events = append(store.events, event)
 	}
 
 	if err := scanner.Err(); err != nil {
-		return nil, fmt.Errorf("error scanning events: %v", err)
+		return nil, fmt.Errorf("error reading file: %v", err)
 	}
 
-	defer eventsFile.Close()
-	return eventsMap, nil
+	return store, nil
 }
 
-func ParseEvent(line string) (Event, error) {
+func parseEvent(line string) (Event, error) {
 	if !strings.HasPrefix(line, "[") {
 		return Event{}, fmt.Errorf("incorrect time's format")
 	}
@@ -97,6 +98,24 @@ func ParseEvent(line string) (Event, error) {
 		CompetitorID: competitorID,
 		ExtraParams:  extraParams,
 	}, nil
+}
+
+// ByTime using time as a key
+func (s *EventStore) ByTime() map[string]Event {
+	result := make(map[string]Event)
+	for _, event := range s.events {
+		result[event.Time] = event
+	}
+	return result
+}
+
+// ByCompetitor using CompetitorID as a key
+func (s *EventStore) ByCompetitor() map[int][]Event {
+	result := make(map[int][]Event)
+	for _, event := range s.events {
+		result[event.CompetitorID] = append(result[event.CompetitorID], event)
+	}
+	return result
 }
 
 func SortMapByKey(eventsMap map[string]Event) []string {

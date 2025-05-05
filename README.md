@@ -86,7 +86,6 @@ Examples:
 [09:51:48.391] 9 1
 [09:59:03.872] 10 1
 [09:59:03.872] 11 1 Lost in the forest
-
 ```
 
 `Output log`
@@ -104,7 +103,7 @@ Examples:
 [09:49:55.915] The competitor(1) entered the penalty laps
 [09:51:48.391] The competitor(1) left the penalty laps
 [09:59:03.872] The competitor(1) ended the main lap
-[09:59:05.321] The competitor(1) can`t continue: Lost in the forest
+    [09:59:05.321] The competitor(1) can`t continue: Lost in the forest
 ```
 
 `Resulting table`
