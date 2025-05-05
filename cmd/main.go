@@ -4,34 +4,23 @@ import (
 	"CompetitionLogger/internal/config"
 	"CompetitionLogger/internal/report/generate"
 	"CompetitionLogger/pkg/events"
+	"CompetitionLogger/pkg/logger"
+	"context"
 	"fmt"
-	"log"
 )
 
 func main() {
+	// Initialize logger
+	ctx := context.Background()
+	ctx, _ = logger.New(ctx)
+
 	// Loading and parsing config.json
-	configBytes, err := config.LoadConfig("/Users/macbook/Projects/test_tasks/CompetitionLogger/sunny_5_skiers/config_test.json")
-	if err != nil {
-		log.Fatalf("Error loading config: %v", err)
-	}
-
-	raceConfig, err := config.ParseConfig(configBytes)
-	if err != nil {
-		log.Fatalf("Error parsing config: %v", err)
-	}
-
-	fmt.Print(raceConfig)
+	configBytes := config.LoadConfig(ctx, "/Users/macbook/Projects/test_tasks/CompetitionLogger/sunny_5_skiers/config_test.json")
+	raceConfig := config.ParseConfig(ctx, configBytes)
 
 	// Loading and parsing events.txt
-	eventsFile, err := events.LoadEvents("/Users/macbook/Projects/test_tasks/CompetitionLogger/sunny_5_skiers/events_test")
-	if err != nil {
-		log.Fatalf("Error loading events: %v", err)
-	}
-
-	store, err := events.ParseEvents(eventsFile)
-	if err != nil {
-		log.Fatalf("Error parsing events: %v", err)
-	}
+	eventsFile := events.LoadEvents(ctx, "/Users/macbook/Projects/test_tasks/CompetitionLogger/sunny_5_skiers/events_test")
+	store := events.ParseEvents(ctx, eventsFile)
 
 	// Generating race's logs
 	keys := events.SortMapByKey(store.ByTime())
@@ -41,6 +30,6 @@ func main() {
 	}
 
 	// Generating race's report table
-	reports := generate.ReportTable(raceConfig, store.ByCompetitor())
+	reports := generate.ReportTable(ctx, raceConfig, store.ByCompetitor())
 	fmt.Println(generate.FormatReport(reports))
 }
