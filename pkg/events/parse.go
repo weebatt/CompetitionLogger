@@ -1,8 +1,10 @@
 package events
 
 import (
+	"CompetitionLogger/pkg/logger"
 	"bufio"
-	"fmt"
+	"context"
+	"go.uber.org/zap"
 	"os"
 	"sort"
 	"strconv"
@@ -21,15 +23,18 @@ type EventStore struct {
 	events []Event
 }
 
-func LoadEvents(pathToEvents string) (*os.File, error) {
+func LoadEvents(ctx context.Context, pathToEvents string) *os.File {
 	eventsFile, err := os.Open(pathToEvents)
 	if err != nil {
-		return nil, fmt.Errorf("error opening file: %v", err)
+		logger.GetFromContext(ctx).Debug("error opening file: ", zap.Error(err))
+		return nil
 	}
-	return eventsFile, nil
+
+	logger.GetFromContext(ctx).Info("success loading events from file", zap.String("path_to_events", pathToEvents))
+	return eventsFile
 }
 
-func ParseEvents(eventsFile *os.File) (*EventStore, error) {
+func ParseEvents(ctx context.Context, eventsFile *os.File) *EventStore {
 	store := &EventStore{}
 	scanner := bufio.NewScanner(eventsFile)
 	for scanner.Scan() {
@@ -38,35 +43,37 @@ func ParseEvents(eventsFile *os.File) (*EventStore, error) {
 			continue
 		}
 
-		event, err := parseEvent(line)
-		if err != nil {
-			return nil, fmt.Errorf("error parsing line %q: %v", line, err)
-		}
+		event := parseEvent(ctx, line)
 		store.events = append(store.events, event)
 	}
 
 	if err := scanner.Err(); err != nil {
-		return nil, fmt.Errorf("error reading file: %v", err)
+		logger.GetFromContext(ctx).Error("error scanning file", zap.Error(err))
+		return nil
 	}
 
-	return store, nil
+	logger.GetFromContext(ctx).Info("success parsed events")
+	return store
 }
 
-func parseEvent(line string) (Event, error) {
+func parseEvent(ctx context.Context, line string) Event {
 	if !strings.HasPrefix(line, "[") {
-		return Event{}, fmt.Errorf("incorrect time's format")
+		logger.GetFromContext(ctx).Error("incorrect time's format", zap.String("line", line))
+		return Event{}
 	}
 
 	endTimeIdx := strings.Index(line, "]")
 	if endTimeIdx == -1 {
-		return Event{}, fmt.Errorf("incorrect time's format: missing close bracket")
+		logger.GetFromContext(ctx).Error("incorrect time's format: missing close bracket")
+		return Event{}
 	}
 
 	timeStr := line[1:endTimeIdx]
 	layout := "15:04:05.000"
 	parsedTime, err := time.Parse(layout, timeStr)
 	if err != nil {
-		return Event{}, fmt.Errorf("error in time parsing %q: %v", timeStr, err)
+		logger.GetFromContext(ctx).Error("error parsing time", zap.String("time", timeStr), zap.Error(err))
+		return Event{}
 	}
 
 	formattedTime := parsedTime.Format(layout)
@@ -74,17 +81,20 @@ func parseEvent(line string) (Event, error) {
 	rest := strings.TrimSpace(line[endTimeIdx+1:])
 	parts := strings.Fields(rest)
 	if len(parts) < 2 {
-		return Event{}, fmt.Errorf("less than two parts in %q: %v", rest, err)
+		logger.GetFromContext(ctx).Error("incorrect time's format: missing close bracket")
+		return Event{}
 	}
 
 	eventID, err := strconv.Atoi(parts[0])
 	if err != nil {
-		return Event{}, fmt.Errorf("error in event id parsing: %v", err)
+		logger.GetFromContext(ctx).Error("error parsing event id", zap.String("time", parts[0]), zap.Error(err))
+		return Event{}
 	}
 
 	competitorID, err := strconv.Atoi(parts[1])
 	if err != nil {
-		return Event{}, fmt.Errorf("error in competitor id parsing: %v", err)
+		logger.GetFromContext(ctx).Error("error parsing competitor id", zap.String("time", parts[1]))
+		return Event{}
 	}
 
 	extraParams := ""
@@ -92,12 +102,13 @@ func parseEvent(line string) (Event, error) {
 		extraParams = strings.Join(parts[2:], " ")
 	}
 
+	logger.GetFromContext(ctx).Info("success parse line into Event")
 	return Event{
 		Time:         formattedTime,
 		EventID:      eventID,
 		CompetitorID: competitorID,
 		ExtraParams:  extraParams,
-	}, nil
+	}
 }
 
 // ByTime using time as a key

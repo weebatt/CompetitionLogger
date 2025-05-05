@@ -1,8 +1,10 @@
 package config
 
 import (
+	"CompetitionLogger/pkg/logger"
+	"context"
 	"encoding/json"
-	"fmt"
+	"go.uber.org/zap"
 	"io/ioutil"
 	"os"
 )
@@ -16,27 +18,30 @@ type Race struct {
 	StartDelta  string
 }
 
-func LoadConfig(pathToConfig string) ([]byte, error) {
+func LoadConfig(ctx context.Context, pathToConfig string) []byte {
 	configFile, err := os.Open(pathToConfig)
 	if err != nil {
-		return nil, fmt.Errorf("error opening configFile: %v", err)
+		logger.GetFromContext(ctx).Error("error opening configFile: ", zap.Error(err))
+		return nil
 	}
 	defer configFile.Close()
 
 	configFileBytes, err := ioutil.ReadAll(configFile)
 	if err != nil {
-		return nil, fmt.Errorf("error with convert configFile into []byte: %v", err)
+		logger.GetFromContext(ctx).Error("error with convert configFile into []byte: ", zap.Error(err))
+		return nil
 	}
 
-	return configFileBytes, nil
+	return configFileBytes
 }
 
-func ParseConfig(jsonFileBytes []byte) (Race, error) {
+func ParseConfig(ctx context.Context, jsonFileBytes []byte) Race {
 	race := Race{}
 	err := json.Unmarshal(jsonFileBytes, &race)
 	if err != nil {
-		return race, fmt.Errorf("error filling race instance: %v", err)
+		logger.GetFromContext(ctx).Error("error unmarshal jsonFileBytes: ", zap.Error(err))
+		return race
 	}
 
-	return race, nil
+	return race
 }

@@ -3,6 +3,8 @@ package worker
 import (
 	"CompetitionLogger/internal/config"
 	"CompetitionLogger/pkg/events"
+	"CompetitionLogger/pkg/logger"
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
@@ -28,7 +30,7 @@ type PenaltyInfo struct {
 	Speed float64
 }
 
-func ProcessCompetitor(config config.Race, competitorID int, events []events.Event) CompetitorReport {
+func ProcessCompetitor(ctx context.Context, config config.Race, competitorID int, events []events.Event) CompetitorReport {
 	var reportTable CompetitorReport
 	reportTable.CompetitorID = competitorID
 	reportTable.Status = "NotStarted"
@@ -91,7 +93,7 @@ func ProcessCompetitor(config config.Race, competitorID int, events []events.Eve
 				start = lapTimes[i-1]
 			}
 			lapInfo.Time = subtractTimes(lapTimes[i], start)
-			lapSeconds, _ := timeToSeconds(lapInfo.Time)
+			lapSeconds := timeToSeconds(ctx, lapInfo.Time)
 			if lapSeconds > 0 {
 				lapInfo.Speed = float64(config.LapLen) / lapSeconds
 			}
@@ -101,7 +103,7 @@ func ProcessCompetitor(config config.Race, competitorID int, events []events.Eve
 
 	if penaltyStart != "" && penaltyEnd != "" {
 		reportTable.Penalty.Time = subtractTimes(penaltyEnd, penaltyStart)
-		penaltySeconds, _ := timeToSeconds(reportTable.Penalty.Time)
+		penaltySeconds := timeToSeconds(ctx, reportTable.Penalty.Time)
 		if penaltySeconds > 0 {
 			misses := shots - hits
 			penaltyDistance := misses * config.PenaltyLen
@@ -122,22 +124,24 @@ func subtractTimes(t2, t1 string) string {
 	return formatDuration(duration)
 }
 
-func timeToSeconds(timeStr string) (float64, error) {
+func timeToSeconds(ctx context.Context, timeStr string) float64 {
 	hoursMinutesSeconds := strings.Split(timeStr, ":")
 	if len(hoursMinutesSeconds) != 3 {
-		return 0, fmt.Errorf("wrong HH:MM:SS format: %s", timeStr)
+		logger.GetFromContext(ctx).Error("wrong HH:MM:SS format: ")
+		return 0
 	}
 
 	secondsMilliseconds := strings.Split(hoursMinutesSeconds[2], ".")
 	if len(secondsMilliseconds) != 2 {
-		return 0, fmt.Errorf("wrong SS:sss format: %s", timeStr)
+		logger.GetFromContext(ctx).Error("wrong SS:sss format: ")
+		return 0
 	}
 
 	hours, _ := strconv.Atoi(hoursMinutesSeconds[0])
 	minutes, _ := strconv.Atoi(hoursMinutesSeconds[1])
 	seconds, _ := strconv.Atoi(secondsMilliseconds[0])
 	milliseconds, _ := strconv.Atoi(secondsMilliseconds[1])
-	return float64(hours*3600+minutes*60+seconds) + float64(milliseconds)/1000.0, nil
+	return float64(hours*3600+minutes*60+seconds) + float64(milliseconds)/1000.0
 }
 
 func formatDuration(d time.Duration) string {
