@@ -1,15 +1,16 @@
 package events
 
 import (
-	"CompetitionLogger/pkg/logger"
 	"bufio"
 	"context"
-	"go.uber.org/zap"
 	"os"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
+
+	"CompetitionLogger/pkg/logger"
+	"go.uber.org/zap"
 )
 
 type Event struct {
@@ -36,20 +37,28 @@ func LoadEvents(ctx context.Context, pathToEvents string) *os.File {
 
 func ParseEvents(ctx context.Context, eventsFile *os.File) *EventStore {
 	store := &EventStore{}
+	if eventsFile == nil {
+		logger.GetFromContext(ctx).Warn("Events file is nil")
+		return store
+	}
+
 	scanner := bufio.NewScanner(eventsFile)
 	for scanner.Scan() {
-		line := scanner.Text()
+		line := strings.TrimSpace(scanner.Text())
 		if line == "" {
 			continue
 		}
 
 		event := parseEvent(ctx, line)
+		if event.Time == "" && event.EventID == 0 && event.CompetitorID == 0 {
+			continue
+		}
 		store.events = append(store.events, event)
 	}
 
 	if err := scanner.Err(); err != nil {
 		logger.GetFromContext(ctx).Error("error scanning file", zap.Error(err))
-		return nil
+		return store
 	}
 
 	logger.GetFromContext(ctx).Info("success parsed events")
@@ -70,30 +79,30 @@ func parseEvent(ctx context.Context, line string) Event {
 
 	timeStr := line[1:endTimeIdx]
 	layout := "15:04:05.000"
-	parsedTime, err := time.Parse(layout, timeStr)
+	_, err := time.Parse(layout, timeStr)
 	if err != nil {
 		logger.GetFromContext(ctx).Error("error parsing time", zap.String("time", timeStr), zap.Error(err))
 		return Event{}
 	}
 
-	formattedTime := parsedTime.Format(layout)
+	formattedTime := timeStr
 
 	rest := strings.TrimSpace(line[endTimeIdx+1:])
 	parts := strings.Fields(rest)
 	if len(parts) < 2 {
-		logger.GetFromContext(ctx).Error("incorrect time's format: missing close bracket")
+		logger.GetFromContext(ctx).Error("incorrect format: missing fields", zap.String("line", line))
 		return Event{}
 	}
 
 	eventID, err := strconv.Atoi(parts[0])
 	if err != nil {
-		logger.GetFromContext(ctx).Error("error parsing event id", zap.String("time", parts[0]), zap.Error(err))
+		logger.GetFromContext(ctx).Error("error parsing event id", zap.String("eventID", parts[0]), zap.Error(err))
 		return Event{}
 	}
 
 	competitorID, err := strconv.Atoi(parts[1])
 	if err != nil {
-		logger.GetFromContext(ctx).Error("error parsing competitor id", zap.String("time", parts[1]))
+		logger.GetFromContext(ctx).Error("error parsing competitor id", zap.String("competitorID", parts[1]), zap.Error(err))
 		return Event{}
 	}
 
