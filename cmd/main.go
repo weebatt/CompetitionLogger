@@ -30,6 +30,6 @@ func main() {
 	}
 
 	// Generating race's report table
-	reports := generate.ReportTable(ctx, raceConfig, store.ByCompetitor())
+	reports := generate.ReportTable(raceConfig, store.ByCompetitor())
 	fmt.Println(generate.FormatReport(reports))
 }

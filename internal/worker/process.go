@@ -3,8 +3,6 @@ package worker
 import (
 	"CompetitionLogger/internal/config"
 	"CompetitionLogger/pkg/events"
-	"CompetitionLogger/pkg/logger"
-	"context"
 	"fmt"
 	"strconv"
 	"strings"
@@ -30,7 +28,7 @@ type PenaltyInfo struct {
 	Speed float64
 }
 
-func ProcessCompetitor(ctx context.Context, config config.Race, competitorID int, events []events.Event) CompetitorReport {
+func ProcessCompetitor(config config.Race, competitorID int, events []events.Event) CompetitorReport {
 	var reportTable CompetitorReport
 	reportTable.CompetitorID = competitorID
 	reportTable.Status = "NotStarted"
@@ -93,7 +91,7 @@ func ProcessCompetitor(ctx context.Context, config config.Race, competitorID int
 				start = lapTimes[i-1]
 			}
 			lapInfo.Time = subtractTimes(lapTimes[i], start)
-			lapSeconds := timeToSeconds(ctx, lapInfo.Time)
+			lapSeconds := TimeToSeconds(lapInfo.Time)
 			if lapSeconds > 0 {
 				lapInfo.Speed = float64(config.LapLen) / lapSeconds
 			}
@@ -103,7 +101,7 @@ func ProcessCompetitor(ctx context.Context, config config.Race, competitorID int
 
 	if penaltyStart != "" && penaltyEnd != "" {
 		reportTable.Penalty.Time = subtractTimes(penaltyEnd, penaltyStart)
-		penaltySeconds := timeToSeconds(ctx, reportTable.Penalty.Time)
+		penaltySeconds := TimeToSeconds(reportTable.Penalty.Time)
 		if penaltySeconds > 0 {
 			misses := shots - hits
 			penaltyDistance := misses * config.PenaltyLen
@@ -117,23 +115,35 @@ func ProcessCompetitor(ctx context.Context, config config.Race, competitorID int
 }
 
 func subtractTimes(t2, t1 string) string {
+	if t1 == "" || t2 == "" {
+		return "00:00:00.000"
+	}
 	layout := "15:04:05.000"
-	time1, _ := time.Parse(layout, t1)
-	time2, _ := time.Parse(layout, t2)
+	time1, err := time.Parse(layout, t1)
+	if err != nil {
+		return "00:00:00.000"
+	}
+
+	time2, err := time.Parse(layout, t2)
+	if err != nil {
+		return "00:00:00.000"
+	}
+
 	duration := time2.Sub(time1)
+	if duration < 0 {
+		return "00:00:00.000"
+	}
 	return formatDuration(duration)
 }
 
-func timeToSeconds(ctx context.Context, timeStr string) float64 {
+func TimeToSeconds(timeStr string) float64 {
 	hoursMinutesSeconds := strings.Split(timeStr, ":")
 	if len(hoursMinutesSeconds) != 3 {
-		logger.GetFromContext(ctx).Error("wrong HH:MM:SS format: ")
 		return 0
 	}
 
 	secondsMilliseconds := strings.Split(hoursMinutesSeconds[2], ".")
 	if len(secondsMilliseconds) != 2 {
-		logger.GetFromContext(ctx).Error("wrong SS:sss format: ")
 		return 0
 	}
 
@@ -145,6 +155,10 @@ func timeToSeconds(ctx context.Context, timeStr string) float64 {
 }
 
 func formatDuration(d time.Duration) string {
+	if d < 0 {
+		return "00:00:00.000"
+	}
+
 	hours := int(d / time.Hour)
 	minutes := int(d/time.Minute) % 60
 	seconds := int(d/time.Second) % 60
