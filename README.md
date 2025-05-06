@@ -4,7 +4,7 @@ git clone https://github.com/weebatt/CompetitionLogger.git
 ```
 
 ### Technical task
-[Main technical task](~/CompetitionLogger/sunny_5_skiers/README.md)
+[Main technical task](/sunny_5_skiers/README.md)
 
 ### Run app
 
