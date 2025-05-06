@@ -7,6 +7,7 @@ import (
 	"CompetitionLogger/pkg/logger"
 	"context"
 	"fmt"
+	"os"
 )
 
 func main() {
@@ -14,12 +15,23 @@ func main() {
 	ctx := context.Background()
 	ctx, _ = logger.New(ctx)
 
+	// Initialize paths to input data
+	configPath := os.Getenv("CONFIG_PATH")
+	if configPath == "" {
+		logger.GetFromContext(ctx).Error("Config path not set or set incorrect")
+	}
+
+	eventsPath := os.Getenv("EVENTS_PATH")
+	if eventsPath == "" {
+		logger.GetFromContext(ctx).Error("Events path not set or set incorrect")
+	}
+
 	// Loading and parsing config.json
-	configBytes := config.LoadConfig(ctx, "/Users/macbook/Projects/test_tasks/CompetitionLogger/sunny_5_skiers/config_test.json")
+	configBytes := config.LoadConfig(ctx, configPath)
 	raceConfig := config.ParseConfig(ctx, configBytes)
 
 	// Loading and parsing events.txt
-	eventsFile := events.LoadEvents(ctx, "/Users/macbook/Projects/test_tasks/CompetitionLogger/sunny_5_skiers/events_test")
+	eventsFile := events.LoadEvents(ctx, eventsPath)
 	store := events.ParseEvents(ctx, eventsFile)
 
 	// Generating race's logs
